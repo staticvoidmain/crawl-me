@@ -12,6 +12,7 @@ import (
 var COMMON_PORTS = []string {
 	"80",
 	"443",
+	"444",
 	"1337",
 	"3000",
 	"4200",
