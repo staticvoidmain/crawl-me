@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
+	"os"
 	"strings"
 	"time"
-	"net/http"
 )
 
-var COMMON_PORTS = []string {
+var COMMON_PORTS = []string{
 	"80",
 	"443",
 	"444",
@@ -24,18 +25,18 @@ var COMMON_PORTS = []string {
 }
 
 const (
-	OPEN = 0
+	OPEN     = 0
 	REJECTED = 1
-	TIMEOUT = 2
+	TIMEOUT  = 2
 )
 
 type PortResult struct {
-	addr string
+	addr   string
 	status int
 }
 
 func scan_port(address string, c chan PortResult) {
-	conn, err := net.DialTimeout("tcp", address, time.Duration(2 * time.Second))
+	conn, err := net.DialTimeout("tcp", address, time.Duration(2*time.Second))
 	if err != nil {
 		log.Printf("WARN: error probing %s %s", address, err)
 		c <- PortResult{address, REJECTED}
@@ -52,7 +53,7 @@ func scan_port(address string, c chan PortResult) {
 
 func basic_crawl(w http.ResponseWriter, r *http.Request) {
 	c := make(chan PortResult)
-	ip := r.RemoteAddr[0: (strings.Index(r.RemoteAddr, ":"))]
+	ip := r.RemoteAddr[0:(strings.Index(r.RemoteAddr, ":"))]
 
 	log.Printf("scanning %s", ip)
 	for i := 0; i < len(COMMON_PORTS); i++ {
@@ -60,9 +61,8 @@ func basic_crawl(w http.ResponseWriter, r *http.Request) {
 		go scan_port(addr, c)
 	}
 
-
 	for i := 0; i < len(COMMON_PORTS); i++ {
-		res := <- c
+		res := <-c
 
 		if res.status == OPEN {
 			fmt.Fprintf(w, "OPEN %s", res.addr)
@@ -72,5 +72,11 @@ func basic_crawl(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/", basic_crawl)
-	log.Fatal(http.ListenAndServe(":80", nil))
+	p := os.Getenv("PORT")
+
+	if p == "" {
+		p = "80"
+	}
+
+	log.Fatal(http.ListenAndServe(":"+p, nil))
 }
